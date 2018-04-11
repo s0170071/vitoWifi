@@ -240,8 +240,19 @@ void OptolinkP300::_receiveHandler() {
     _rcvBuffer[_rcvBufferLen] = _stream->read();
     ++_rcvBufferLen;
   }
-  if (_rcvBuffer[0] != 0x41) return;  // TODO(@bertmelis): find out why this is needed! I'd expect the rx-buffer to be empty.
-  if (_rcvBufferLen == _rcvLen) {          // message complete, check message
+  if (_rcvBufferLen <=1) return; // see todo below. 
+  if (_rcvBuffer[0] != 0x41)  
+        { 
+        _clearInputBuffer(); 
+        memset(_rcvBuffer, 0, 12); 
+        _rcvBufferLen=0; 
+        return;  // TODO(@bertmelis): find out why this is needed! I'd expect the rx-buffer to be empty. 
+                 // s0170071: @bertmelis: its because you loop faster than data comes in. First loop-> no data received yet :-( 
+        }   
+  if (_rcvBufferLen >1) { 
+    _rcvLen= _rcvBuffer[1] + 3; // 3 because 0x41, len, crc; use this length- there is no more data coming. TODO: change code so that expected amount is compared to received. 
+    }   
+   if (_rcvBufferLen == _rcvLen) {          // message complete, check message
     if (_printer) {
       _printer->print(F("RCV "));
       _printHex(_printer, _rcvBuffer, _rcvBufferLen);
@@ -253,11 +264,13 @@ void OptolinkP300::_receiveHandler() {
       return;
     }
     if (_rcvBuffer[2] != 0x01) {  // Vitotronic returns an error message, skipping DP
-      _numberOfTries = 0;
+     // _numberOfTries = 0;  // please check
       _errorCode = 3;  // Vitotronic error
       if (_printer)
         _printer->println(F("nack, comm error"));
-      return;
+       _setState(RECEIVE_ACK); // please check
+       _setAction(RETURN_ERROR); // please check
+    return; 
     }
     if (!_checkChecksum(_rcvBuffer, _rcvLen)) {  // checksum is wrong, trying again
       _rcvBufferLen = 0;

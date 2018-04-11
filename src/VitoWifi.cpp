@@ -177,6 +177,7 @@ void VitoWifiBase::_writeDatapoint(const char* name, float value, size_t length)
 template <>
 void VitoWifiInterface<OptolinkP300>::loop() {
   _optolink.loop();
+  if (_queue.empty()) return; 
   if (!_queue.empty() && !_optolink.isBusy()) {
     if (_queue.front().write) {
       _optolink.writeToDP(_queue.front().DP->getAddress(), _queue.front().DP->getLength(), _queue.front().value);
